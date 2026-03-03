@@ -1,0 +1,6 @@
+node_modules/
+uploads/
+output/
+.DS_Store
+test.pdf
+test_resume.pdf

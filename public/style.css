@@ -97,3 +97,9 @@ main { max-width: 1200px; margin: 0 auto; padding: 1rem; }
 #preview blockquote { border-left: 3px solid #6c63ff; padding-left: 1rem; color: #aaa; margin: 0.5rem 0; }
 #preview a { color: #6c63ff; }
 #preview img { max-width: 100%; border-radius: 4px; margin: 0.5rem 0; }
+#preview table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; }
+#preview th, #preview td {
+  border: 1px solid #444; padding: 0.4rem 0.8rem; text-align: left;
+}
+#preview th { background: #0f3460; color: #fff; font-weight: 600; }
+#preview tr:nth-child(even) { background: rgba(255,255,255,0.03); }

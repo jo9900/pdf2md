@@ -1,149 +1,370 @@
-import { EditorView, basicSetup } from "codemirror";
-import { markdown } from "@codemirror/lang-markdown";
-import { EditorState } from "@codemirror/state";
-import { oneDark } from "@codemirror/theme-one-dark";
+// === STATE ===
+const fileStore = new Map();
+let activeFileId = null;
+let pendingSwitch = null;
 
-// DOM elements
-const dropZone = document.getElementById("drop-zone");
-const fileInput = document.getElementById("file-input");
-const uploadSection = document.getElementById("upload-section");
-const uploadStatus = document.getElementById("upload-status");
-const statusText = document.getElementById("status-text");
-const uploadError = document.getElementById("upload-error");
-const errorText = document.getElementById("error-text");
-const retryBtn = document.getElementById("retry-btn");
-const editorSection = document.getElementById("editor-section");
-const editorContainer = document.getElementById("editor");
-const previewContainer = document.getElementById("preview");
-const filenameEl = document.getElementById("filename");
-const downloadBtn = document.getElementById("download-btn");
-const newBtn = document.getElementById("new-btn");
+// === DOM REFS ===
+const uploadBtn = document.getElementById('upload-btn');
+const fileInput = document.getElementById('file-input');
+const fileList = document.getElementById('file-list');
+const exportZipBtn = document.getElementById('export-zip-btn');
+const emptyState = document.getElementById('empty-state');
+const dropZone = document.getElementById('drop-zone');
+const editorSection = document.getElementById('editor-section');
+const filenameEl = document.getElementById('filename');
+const downloadBtn = document.getElementById('download-btn');
+const deleteBtn = document.getElementById('delete-btn');
+const editor = document.getElementById('editor');
+const preview = document.getElementById('preview');
+const confirmDialog = document.getElementById('confirm-dialog');
+const confirmSaveBtn = document.getElementById('confirm-save');
+const confirmDiscardBtn = document.getElementById('confirm-discard');
+const confirmCancelBtn = document.getElementById('confirm-cancel');
 
-let editorView = null;
-let currentFilename = "";
+// === HELPERS ===
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
 
-// Initialize CodeMirror editor
-function initEditor(content) {
-  if (editorView) {
-    editorView.destroy();
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+// === FILE STORE OPERATIONS ===
+function addFile(pdfFile) {
+  const id = generateId();
+  fileStore.set(id, {
+    id,
+    name: pdfFile.name,
+    size: pdfFile.size,
+    file: pdfFile,
+    status: 'pending',
+    error: null,
+    originalMarkdown: '',
+    editedMarkdown: '',
+    dirty: false,
+  });
+  renderFileList();
+  processQueue();
+  return id;
+}
+
+function removeFile(id) {
+  if (activeFileId === id) {
+    activeFileId = null;
+    showEmptyState();
   }
-
-  const updateListener = EditorView.updateListener.of((update) => {
-    if (update.docChanged) {
-      renderPreview(update.state.doc.toString());
-    }
-  });
-
-  editorView = new EditorView({
-    state: EditorState.create({
-      doc: content,
-      extensions: [basicSetup, markdown(), oneDark, updateListener],
-    }),
-    parent: editorContainer,
-  });
-
-  renderPreview(content);
+  fileStore.delete(id);
+  renderFileList();
+  updateExportButton();
 }
 
-// Render markdown preview using marked
-function renderPreview(md) {
-  previewContainer.innerHTML = window.marked.parse(md);
-}
+// === CONVERSION QUEUE ===
+let isConverting = false;
 
-// Show upload screen, hide editor
-function showUpload() {
-  editorSection.classList.add("hidden");
-  uploadSection.classList.remove("hidden");
-  uploadStatus.classList.add("hidden");
-  uploadError.classList.add("hidden");
-  dropZone.classList.remove("hidden");
-}
+async function processQueue() {
+  if (isConverting) return;
 
-// Show editor screen with markdown content
-function showEditor(md, filename) {
-  currentFilename = filename.replace(/\.pdf$/i, ".md");
-  filenameEl.textContent = currentFilename;
-  uploadSection.classList.add("hidden");
-  editorSection.classList.remove("hidden");
-  initEditor(md);
-}
+  const pending = [...fileStore.values()].find(f => f.status === 'pending');
+  if (!pending) return;
 
-// Upload and convert PDF
-async function uploadPdf(file) {
-  dropZone.classList.add("hidden");
-  uploadError.classList.add("hidden");
-  uploadStatus.classList.remove("hidden");
-  statusText.textContent = `Converting ${file.name}...`;
+  isConverting = true;
+  pending.status = 'converting';
+  renderFileList();
 
   const formData = new FormData();
-  formData.append("pdf", file);
+  formData.append('pdf', pending.file);
 
   try {
-    const res = await fetch("/api/convert", {
-      method: "POST",
-      body: formData,
-    });
-
+    const res = await fetch('/api/convert', { method: 'POST', body: formData });
     const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Conversion failed');
 
-    if (!res.ok) {
-      throw new Error(data.error || "Conversion failed");
+    pending.status = 'done';
+    pending.originalMarkdown = data.markdown;
+    pending.editedMarkdown = data.markdown;
+    pending.dirty = false;
+
+    if (!activeFileId) {
+      selectFile(pending.id);
+    }
+  } catch (err) {
+    pending.status = 'error';
+    pending.error = err.message;
+  }
+
+  isConverting = false;
+  renderFileList();
+  updateExportButton();
+  processQueue();
+}
+
+// === FILE SELECTION ===
+function selectFile(id) {
+  const current = fileStore.get(activeFileId);
+
+  if (current && current.dirty && activeFileId !== id) {
+    pendingSwitch = { targetId: id };
+    showConfirmDialog();
+    return;
+  }
+
+  activateFile(id);
+}
+
+function activateFile(id, { skipSync = false } = {}) {
+  const entry = fileStore.get(id);
+  if (!entry || entry.status !== 'done') return;
+
+  if (!skipSync && activeFileId && fileStore.has(activeFileId)) {
+    syncEditorToStore();
+  }
+
+  activeFileId = id;
+  showEditorView(entry);
+  renderFileList();
+}
+
+function syncEditorToStore() {
+  const current = fileStore.get(activeFileId);
+  if (current && current.status === 'done') {
+    current.editedMarkdown = editor.value;
+  }
+}
+
+// === DIRTY STATE ===
+function checkDirty() {
+  const current = fileStore.get(activeFileId);
+  if (!current) return;
+  const wasDirty = current.dirty;
+  current.dirty = current.editedMarkdown !== editor.value;
+  if (wasDirty !== current.dirty) {
+    renderFileList();
+  }
+}
+
+// === CONFIRM DIALOG ===
+function showConfirmDialog() {
+  confirmDialog.classList.remove('hidden');
+}
+
+function hideConfirmDialog() {
+  confirmDialog.classList.add('hidden');
+  pendingSwitch = null;
+}
+
+confirmSaveBtn.addEventListener('click', () => {
+  const current = fileStore.get(activeFileId);
+  if (current) {
+    current.editedMarkdown = editor.value;
+    current.dirty = false;
+  }
+  const target = pendingSwitch?.targetId;
+  hideConfirmDialog();
+  if (target) activateFile(target, { skipSync: true });
+});
+
+confirmDiscardBtn.addEventListener('click', () => {
+  const current = fileStore.get(activeFileId);
+  if (current) {
+    current.editedMarkdown = current.originalMarkdown;
+    current.dirty = false;
+  }
+  const target = pendingSwitch?.targetId;
+  hideConfirmDialog();
+  if (target) activateFile(target, { skipSync: true });
+});
+
+confirmCancelBtn.addEventListener('click', () => {
+  hideConfirmDialog();
+});
+
+// === RENDERING ===
+function renderFileList() {
+  fileList.innerHTML = '';
+  for (const [id, entry] of fileStore) {
+    const li = document.createElement('li');
+    if (id === activeFileId) li.classList.add('active');
+
+    const statusEl = document.createElement('span');
+    statusEl.className = 'file-status';
+    if (entry.status === 'pending') {
+      statusEl.classList.add('status-pending');
+      statusEl.textContent = '○';
+    } else if (entry.status === 'converting') {
+      statusEl.classList.add('status-converting');
+      statusEl.innerHTML = '<span class="spinner-icon"></span>';
+    } else if (entry.status === 'done') {
+      statusEl.classList.add('status-done');
+      statusEl.textContent = '●';
+      if (entry.dirty) statusEl.classList.add('status-dirty');
+    } else if (entry.status === 'error') {
+      statusEl.classList.add('status-error');
+      statusEl.textContent = '✕';
     }
 
-    showEditor(data.markdown, data.filename);
-  } catch (err) {
-    uploadStatus.classList.add("hidden");
-    uploadError.classList.remove("hidden");
-    errorText.textContent = err.message;
+    const nameEl = document.createElement('span');
+    nameEl.className = 'file-name';
+    nameEl.textContent = entry.name;
+    if (entry.status === 'error') {
+      nameEl.title = entry.error;
+    }
+
+    const sizeEl = document.createElement('span');
+    sizeEl.className = 'file-size';
+    sizeEl.textContent = formatFileSize(entry.size);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'file-delete';
+    delBtn.textContent = '×';
+    delBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeFile(id);
+    });
+
+    li.appendChild(statusEl);
+    li.appendChild(nameEl);
+    li.appendChild(sizeEl);
+    li.appendChild(delBtn);
+
+    li.addEventListener('click', () => {
+      if (entry.status === 'error') {
+        entry.status = 'pending';
+        entry.error = null;
+        renderFileList();
+        processQueue();
+      } else if (entry.status === 'done') {
+        selectFile(id);
+      }
+    });
+
+    fileList.appendChild(li);
   }
 }
 
-// Download current markdown content
-function downloadMarkdown() {
-  if (!editorView) return;
+function showEmptyState() {
+  editorSection.classList.add('hidden');
+  emptyState.classList.remove('hidden');
+}
 
-  const content = editorView.state.doc.toString();
-  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = currentFilename;
+function showEditorView(entry) {
+  emptyState.classList.add('hidden');
+  editorSection.classList.remove('hidden');
+  filenameEl.textContent = entry.name.replace(/\.pdf$/i, '.md');
+  editor.value = entry.editedMarkdown;
+  renderPreview();
+}
+
+function renderPreview() {
+  preview.innerHTML = marked.parse(editor.value);
+}
+
+function updateExportButton() {
+  const hasDone = [...fileStore.values()].some(f => f.status === 'done');
+  exportZipBtn.disabled = !hasDone;
+}
+
+// === FILE UPLOAD ===
+function handleFiles(files) {
+  const pdfFiles = [...files].filter(
+    f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
+  );
+  if (pdfFiles.length === 0) return;
+  pdfFiles.forEach(f => addFile(f));
+}
+
+uploadBtn.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', (e) => {
+  handleFiles(e.target.files);
+  fileInput.value = '';
+});
+
+// Drag & drop on entire document
+document.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone?.classList.add('dragover');
+});
+
+document.addEventListener('dragleave', (e) => {
+  if (!e.relatedTarget || e.relatedTarget === document.documentElement) {
+    dropZone?.classList.remove('dragover');
+  }
+});
+
+document.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone?.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+
+// Also allow clicking drop zone
+dropZone.addEventListener('click', () => fileInput.click());
+
+// === DOWNLOAD SINGLE .md ===
+downloadBtn.addEventListener('click', () => {
+  const entry = fileStore.get(activeFileId);
+  if (!entry) return;
+  syncEditorToStore();
+  const filename = entry.name.replace(/\.pdf$/i, '.md');
+  const blob = new Blob([editor.value], { type: 'text/markdown;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
-}
-
-// Drag & drop handlers
-dropZone.addEventListener("click", () => fileInput.click());
-
-fileInput.addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (file) uploadPdf(file);
-  fileInput.value = "";
+  URL.revokeObjectURL(a.href);
 });
 
-dropZone.addEventListener("dragover", (e) => {
-  e.preventDefault();
-  dropZone.classList.add("dragover");
+// === DELETE FILE ===
+deleteBtn.addEventListener('click', () => {
+  if (activeFileId) removeFile(activeFileId);
 });
 
-dropZone.addEventListener("dragleave", () => {
-  dropZone.classList.remove("dragover");
+// === ZIP EXPORT ===
+exportZipBtn.addEventListener('click', async () => {
+  syncEditorToStore();
+  const zip = new JSZip();
+  const usedNames = new Set();
+  for (const entry of fileStore.values()) {
+    if (entry.status === 'done') {
+      let mdName = entry.name.replace(/\.pdf$/i, '.md');
+      let counter = 1;
+      const baseName = mdName;
+      while (usedNames.has(mdName)) {
+        mdName = baseName.replace(/\.md$/, ` (${counter++}).md`);
+      }
+      usedNames.add(mdName);
+      zip.file(mdName, entry.editedMarkdown);
+    }
+  }
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'markdown-export.zip';
+  a.click();
+  URL.revokeObjectURL(a.href);
 });
 
-dropZone.addEventListener("drop", (e) => {
-  e.preventDefault();
-  dropZone.classList.remove("dragover");
-  const file = e.dataTransfer.files[0];
-  if (file && file.type === "application/pdf") {
-    uploadPdf(file);
-  } else {
-    uploadError.classList.remove("hidden");
-    errorText.textContent = "Please drop a PDF file.";
-    dropZone.classList.add("hidden");
+// === EDITOR EVENTS ===
+editor.addEventListener('input', () => {
+  renderPreview();
+  checkDirty();
+});
+
+// === KEYBOARD SHORTCUTS ===
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    const current = fileStore.get(activeFileId);
+    if (current) {
+      current.editedMarkdown = editor.value;
+      current.dirty = false;
+      renderFileList();
+    }
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+    e.preventDefault();
+    if (!exportZipBtn.disabled) exportZipBtn.click();
   }
 });
-
-// Button handlers
-downloadBtn.addEventListener("click", downloadMarkdown);
-newBtn.addEventListener("click", showUpload);
-retryBtn.addEventListener("click", showUpload);

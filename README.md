@@ -13,7 +13,10 @@ PDF conversion powered by [opendataloader-pdf](https://github.com/opendataloader
 - **Dirty state tracking** — unsaved edit indicator, confirm dialog when switching files
 - **Conversion caching** — switch between files instantly, no re-conversion
 - **ZIP export** — one-click download of all converted `.md` files
-- **Keyboard shortcuts** — `Cmd/Ctrl+S` save edits, `Cmd/Ctrl+E` export ZIP
+- **Template PDF export** — upload a PDF template, extract styles (fonts, sizes, margins, page layout), and export Markdown as styled PDFs
+- **PDF preview** — in-page preview modal before downloading generated PDFs
+- **Batch PDF ZIP** — export all files as styled PDFs in a single ZIP
+- **Keyboard shortcuts** — `Cmd/Ctrl+S` save edits, `Cmd/Ctrl+E` export MD ZIP, `Cmd/Ctrl+Shift+E` export PDF
 - **Click-to-retry** — click failed files in sidebar to re-queue conversion
 
 ## Tech Stack
@@ -21,6 +24,9 @@ PDF conversion powered by [opendataloader-pdf](https://github.com/opendataloader
 ### Backend
 - **Node.js** + **Express** — API server (port 3000)
 - **Multer** — PDF upload handling (max 50MB)
+- **Puppeteer** — headless Chrome for Markdown-to-styled-PDF rendering
+- **pdfjs-dist** — template PDF style extraction (fonts, sizes, margins)
+- **marked** (server-side) — Markdown to HTML conversion for PDF generation
 - **opendataloader-pdf** (Python) — PDF parsing & Markdown conversion engine
   - Called via `child_process.execSync`
   - Images embedded as Base64 data URIs in Markdown output
@@ -52,8 +58,23 @@ pdfloader/
 POST /api/convert
   Content-Type: multipart/form-data
   Body: pdf=<file>
-
   Response: { "markdown": "...", "filename": "original.pdf" }
+
+POST /api/template
+  Content-Type: multipart/form-data
+  Body: template=<pdf-file>
+  Response: { "filename": "...", "styles": { ... } }
+
+GET /api/template
+  Response: { "template": { "filename": "...", "styles": { ... } } | null }
+
+DELETE /api/template
+  Response: { "success": true }
+
+POST /api/generate-pdf
+  Content-Type: application/json
+  Body: { "markdown": "..." }
+  Response: application/pdf (binary)
 ```
 
 ## Getting Started

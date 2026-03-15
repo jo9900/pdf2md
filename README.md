@@ -19,15 +19,15 @@ A web application that batch-converts documents (PDF, DOCX, PPTX, XLSX, EPUB) to
 git clone https://github.com/jo9900/pdf2md.git
 cd pdf2md
 npm install
-pip3 install opendataloader-pdf   # optional, for opendataloader engine
+pip3 install opendataloader-pdf   # requires Python 3 + Java Runtime
 npm start                         # http://localhost:3000
 ```
 
 ### Requirements
 
-- **Node.js >= 18** (required)
-- **Python 3 + Java Runtime** (required for opendataloader engine only)
-- kreuzberg engine works with Node.js alone
+- Node.js >= 18
+- Python 3
+- Java Runtime
 
 ## Tech Stack
 

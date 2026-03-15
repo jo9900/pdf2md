@@ -13,42 +13,21 @@
       <div class="sidebar-header">
         <h1>PDF → MD</h1>
         <button id="upload-btn" class="btn btn-primary btn-sm">+ Upload</button>
-        <input type="file" id="file-input" accept=".pdf" multiple hidden />
+        <input type="file" id="file-input" accept=".pdf,.docx,.doc,.pptx,.xlsx,.epub" multiple hidden />
       </div>
       <ul id="file-list"></ul>
 
-      <!-- TEMPLATE SECTION -->
-      <div id="template-section">
-        <div class="section-label">Style Template</div>
-        <div id="template-empty">
-          <div class="template-drop-area" id="template-drop-area">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-            </svg>
-            <span>Drop template PDF</span>
-          </div>
-          <button id="template-upload-btn" class="btn btn-sm btn-secondary btn-block">Choose template</button>
-          <input type="file" id="template-input" accept=".pdf" hidden />
-        </div>
-        <div id="template-info" class="hidden">
-          <div class="template-file-row">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-            </svg>
-            <span id="template-name" class="template-name"></span>
-          </div>
-          <div class="template-actions">
-            <button id="template-replace-btn" class="btn btn-sm btn-secondary">Replace</button>
-            <button id="template-delete-btn" class="btn btn-sm btn-danger">Remove</button>
-          </div>
-        </div>
+      <!-- ENGINE SELECTOR -->
+      <div id="engine-section">
+        <div class="section-label">Conversion Engine</div>
+        <select id="engine-select" class="engine-select">
+          <option value="opendataloader">opendataloader-pdf</option>
+          <option value="kreuzberg">kreuzberg</option>
+        </select>
       </div>
 
       <div class="sidebar-footer">
         <button id="export-zip-btn" class="btn btn-accent btn-block" disabled>Export MD ZIP</button>
-        <button id="export-pdf-zip-btn" class="btn btn-pdf btn-block" disabled>Export PDF ZIP</button>
       </div>
     </aside>
 
@@ -64,7 +43,7 @@
               <polyline points="9 15 12 12 15 15"/>
             </svg>
           </div>
-          <p class="drop-text">Drag & drop PDFs here</p>
+          <p class="drop-text">Drag & drop files here</p>
           <p class="drop-hint">or click "Upload" in the sidebar</p>
         </div>
       </div>
@@ -73,9 +52,7 @@
         <div class="toolbar">
           <span id="filename" class="filename"></span>
           <div class="toolbar-actions">
-            <button id="export-pdf-btn" class="btn btn-pdf btn-sm">Export PDF</button>
             <button id="download-btn" class="btn btn-primary btn-sm">Download .md</button>
-            <button id="delete-btn" class="btn btn-danger btn-sm">Delete</button>
           </div>
         </div>
         <div id="split-pane">
@@ -101,23 +78,6 @@
         <button id="confirm-save" class="btn btn-primary">Save</button>
         <button id="confirm-discard" class="btn btn-secondary">Discard</button>
         <button id="confirm-cancel" class="btn btn-secondary">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- PDF Preview Modal -->
-  <div id="pdf-preview-modal" class="modal hidden">
-    <div class="modal-content modal-lg">
-      <div class="modal-header">
-        <h2 id="pdf-preview-title">PDF Preview</h2>
-        <button id="pdf-preview-close" class="modal-close-btn">&times;</button>
-      </div>
-      <div class="modal-body">
-        <iframe id="pdf-preview-frame"></iframe>
-      </div>
-      <div class="modal-footer">
-        <button id="pdf-download-btn" class="btn btn-pdf">Download PDF</button>
-        <button id="pdf-close-btn" class="btn btn-secondary">Close</button>
       </div>
     </div>
   </div>

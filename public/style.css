@@ -122,12 +122,7 @@ body {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* === Template Section === */
-#template-section {
-  border-top: 1px solid #333;
-  padding: 0.75rem 1rem;
-}
-
+/* === Engine Section === */
 .section-label {
   font-size: 0.7rem;
   text-transform: uppercase;
@@ -136,54 +131,27 @@ body {
   margin-bottom: 0.5rem;
 }
 
-.template-drop-area {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  border: 1.5px dashed #444;
+#engine-section {
+  border-top: 1px solid #333;
+  padding: 0.75rem 1rem;
+}
+
+.engine-select {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
   border-radius: 6px;
-  color: #666;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-bottom: 0.5rem;
-}
-
-.template-drop-area:hover,
-.template-drop-area.dragover {
-  border-color: #e07c24;
-  color: #e07c24;
-  background: rgba(224, 124, 36, 0.05);
-}
-
-#template-empty .btn {
-  margin-top: 0;
-}
-
-.template-file-row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: #e07c24;
+  border: 1px solid #444;
+  background: #1a1a2e;
+  color: #e0e0e0;
   font-size: 0.85rem;
-  margin-bottom: 0.5rem;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
 }
 
-.template-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-}
-
-.template-actions {
-  display: flex;
-  gap: 0.4rem;
-}
-
-.template-actions .btn {
-  flex: 1;
+.engine-select:hover,
+.engine-select:focus {
+  border-color: #4a9eff;
 }
 
 .sidebar-footer {
@@ -211,7 +179,6 @@ body {
 .btn-secondary { background: #333; color: #ccc; }
 .btn-accent { background: #4caf50; color: #fff; }
 .btn-danger { background: #ff6b6b; color: #fff; }
-.btn-pdf { background: #e07c24; color: #fff; }
 .btn-block { width: 100%; }
 
 /* === Main Content === */
@@ -232,12 +199,12 @@ body {
 #drop-zone {
   border: 2px dashed #444;
   border-radius: 12px;
-  padding: 3rem 2rem;
+  padding: 6rem 4rem;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
   width: 100%;
-  max-width: 500px;
+  max-width: 800px;
 }
 #drop-zone:hover, #drop-zone.dragover {
   border-color: #6c63ff;
@@ -371,66 +338,6 @@ body {
   display: flex;
   gap: 0.5rem;
   justify-content: flex-end;
-}
-
-/* === PDF Preview Modal (large) === */
-.modal-lg {
-  max-width: 900px;
-  width: 95%;
-  height: 85vh;
-  display: flex;
-  flex-direction: column;
-  padding: 0;
-  overflow: hidden;
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid #333;
-}
-
-.modal-header h2 {
-  font-size: 1rem;
-  color: #fff;
-  font-weight: 600;
-}
-
-.modal-close-btn {
-  background: none;
-  border: none;
-  color: #888;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0 0.25rem;
-  line-height: 1;
-  transition: color 0.15s;
-}
-
-.modal-close-btn:hover {
-  color: #fff;
-}
-
-.modal-body {
-  flex: 1;
-  overflow: hidden;
-  background: #0d1b2a;
-}
-
-.modal-body iframe {
-  width: 100%;
-  height: 100%;
-  border: none;
-}
-
-.modal-footer {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-  padding: 1rem 1.25rem;
-  border-top: 1px solid #333;
 }
 
 /* === Loading Overlay === */

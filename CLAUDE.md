@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-pdfloader is a web app that batch-converts documents (PDF, DOCX, PPTX, XLSX, EPUB) to editable Markdown. It has a sidebar file manager, split-pane Markdown editor with live preview, and ZIP export. Two conversion engines: `opendataloader-pdf` (Python/Java, PDF only) and `kreuzberg` (Node.js native, all formats).
+pdf2md is a web app that batch-converts documents (PDF, DOCX, PPTX, XLSX, EPUB) to editable Markdown. It has a sidebar file manager, split-pane Markdown editor with live preview, and ZIP export. Two conversion engines: `opendataloader-pdf` (Python/Java, PDF only) and `kreuzberg` (Node.js native, all formats).
 
 ## Commands
 

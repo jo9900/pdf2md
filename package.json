@@ -1,5 +1,5 @@
 {
-  "name": "pdfloader",
+  "name": "pdf2md",
   "version": "1.0.0",
   "description": "PDF to Markdown converter web application",
   "main": "server.js",
@@ -10,10 +10,6 @@
   "dependencies": {
     "@kreuzberg/node": "^4.4.3",
     "express": "^4.21.0",
-    "marked": "^17.0.4",
-    "multer": "^1.4.5-lts.1",
-    "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^4.9.155",
-    "puppeteer": "^24.38.0"
+    "multer": "^1.4.5-lts.1"
   }
 }
